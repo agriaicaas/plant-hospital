@@ -1,9 +1,4 @@
 /*
- * @Author: 吴伟 15711376175@163.com
- * @Date: 2025-03-05 16:07:24
- * @LastEditors: 吴伟 15711376175@163.com
- * @LastEditTime: 2025-03-05 21:58:05
- * @FilePath: /ai/src/utils/oss.ts
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
 import OSS from 'ali-oss';
