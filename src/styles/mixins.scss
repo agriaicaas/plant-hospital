@@ -1,0 +1,69 @@
+// 弹性布局
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+// 文本溢出省略
+@mixin text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// 多行文本溢出省略
+@mixin multi-ellipsis($lines: 2) {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: $lines;
+  overflow: hidden;
+}
+
+// 卡片样式
+@mixin card {
+  background: $white;
+  border-radius: $border-radius-md;
+  box-shadow: $shadow-md;
+  transition: all 0.3s;
+
+  &:hover {
+    transform: translateY(-10px);
+    box-shadow: $shadow-lg;
+  }
+}
+
+// 按钮样式
+@mixin button {
+  border: none;
+  border-radius: $border-radius-lg;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-weight: 500;
+
+  &:hover {
+    transform: scale(1.05);
+    box-shadow: $shadow-md;
+  }
+}
+
+// 标题样式
+@mixin title {
+  font-size: $font-size-xxl;
+  color: $text-color;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: $spacing-xxl;
+}
+
+// 容器样式
+@mixin container($width: $container-lg) {
+  width: $width;
+  margin: 0 auto;
+} 

@@ -1,0 +1,322 @@
+<!--
+ * @Author: 吴伟 15711376175@163.com
+ * @Date: 2025-03-06 09:52:29
+ * @LastEditors: 吴伟 15711376175@163.com
+ * @LastEditTime: 2025-03-28 15:30:02
+ * @FilePath: /ai/src/views/newImageTalk.vue
+ * @Description: 专门用于处理包含 Outputmessages 的图像分析结果
+-->
+<template>
+  <div :style="{ height: 'auto', minHeight: '100px' }">
+    <Bubble :typing="true" :content="''" :message-render="() => renderAnalysisResult(analysisResult)"
+      :avatar="{ icon: h(UserOutlined) }" />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { UserOutlined } from '@ant-design/icons-vue';
+import { Bubble } from 'ant-design-x-vue';
+import type { BubbleProps } from 'ant-design-x-vue';
+import { Typography } from 'ant-design-vue';
+import markdownit from 'markdown-it';
+import { h } from 'vue';
+
+// 定义props - 使用any类型以支持更灵活的数据结构
+const props = defineProps<{
+  analysisResult: any;
+}>();
+
+const md = markdownit({ html: true, breaks: true });
+
+// 分析结果渲染函数
+const renderAnalysisResult = (result: any) => {
+  console.log('新版渲染分析结果:', result);
+  
+  // 保存可能的化学药剂名称，用于后面生成购买链接
+  let chemicalDrugName = '';
+
+  // 安全检查：确保 result 存在
+  if (!result || !result.result) {
+    return h(Typography, null, {
+      default: () => h('div', {
+        innerHTML: md.render('## 正在加载分析结果...'),
+        style: {
+          padding: '20px',
+          'max-width': '800px',
+          margin: '0 auto'
+        }
+      })
+    });
+  }
+
+  // 输出更详细的日志，帮助调试
+  if (result.result['plant-hospital_analysis_result']) {
+    console.log('plant-hospital_analysis_result 数据:', result.result['plant-hospital_analysis_result']);
+
+    if (result.result['plant-hospital_analysis_result'].Outputmessages &&
+      result.result['plant-hospital_analysis_result'].Outputmessages.length > 0) {
+      console.log('Outputmessages[0]:', result.result['plant-hospital_analysis_result'].Outputmessages[0]);
+
+      if (result.result['plant-hospital_analysis_result'].Outputmessages[0].solution) {
+        console.log('solution 数据:', result.result['plant-hospital_analysis_result'].Outputmessages[0].solution);
+      }
+    }
+  }
+
+  // 基本信息部分
+  let markdown = `
+## 图像分析结果
+
+**基本信息**
+- 状态：${result.result.message || '处理中...'}
+- 分析类型：${result.result.data_type || '图片分析'}
+
+### 图像预览
+${result.result.imageP_url ? `![图片P](${result.result.imageP_url})` : ''}
+${result.result.imageL_url ? `![图片L](${result.result.imageL_url})` : ''}
+`;
+
+  // 处理植物信息
+  if (result.result['plant-hospital_analysis_result'] || result.result['plant-lab_analysis_result']) {
+    const plantResult = result.result['plant-hospital_analysis_result'] || result.result['plant-lab_analysis_result'];
+
+    // 处理 Outputmessages 数组格式
+    if (plantResult.Outputmessages && Array.isArray(plantResult.Outputmessages) && plantResult.Outputmessages.length > 0) {
+      const mainResult = plantResult.Outputmessages[0];
+
+      markdown += `\n### 植物信息\n`;
+      for (let key in mainResult) {
+        if (mainResult[key]) {
+          // 处理生长影响因素
+          if (key == '生长影响因素分析') {
+            if (mainResult.生长影响因素分析 && typeof mainResult.生长影响因素分析 === 'object') {
+              markdown += `\n### 生长影响因素\n`;
+
+              Object.entries(mainResult.生长影响因素分析).forEach(([key, value]) => {
+                if (typeof value === 'string') {
+                  markdown += `- **${key}**：${value}\n`;
+                } else if (typeof value === 'object') {
+                  markdown += `- **${key}**：${JSON.stringify(value)}\n`;
+                }
+              });
+            } 
+          }else if (key == 'solution') {
+            console.log(key , ' key === solution 111')
+              if (mainResult[key] && Array.isArray(mainResult[key]) && mainResult[key].length > 0) {
+                console.log('准备处理 solution 数据:', mainResult[key]);
+                const solution = mainResult[key][0];
+                markdown += `\n### 解决方案\n`;
+
+                if (solution.栽培管理方案) {
+                  markdown += `\n#### 栽培管理方案\n`;
+
+                  if (solution.栽培管理方案.环境调控) {
+                    markdown += `\n##### 环境调控建议\n`;
+                    Object.entries(solution.栽培管理方案.环境调控).forEach(([key, value]) => {
+                      markdown += `- **${key}**：${value}\n`;
+                    });
+                  }
+
+                  if (solution.栽培管理方案.营养管理) {
+                    markdown += `\n##### 营养管理\n${solution.栽培管理方案.营养管理}\n`;
+                  }
+                }
+
+                // 添加处理其他可能的 solution 字段
+                const excludedKeys = ['栽培管理方案']; // 已经处理过的字段
+
+                // 处理其他顶级字段
+                Object.entries(solution).forEach(([key, value]) => {
+                  console.log(`处理 solution 中的字段111: ${key}`, value);
+                  // 检查是否有药剂名称
+                  if (key === '病害解决方案' && typeof value === 'object' && value !== null) {
+                    if (value.化学药剂名称 && value.化学药剂名称 !== '因未明确情况，暂无法提供') {
+                      chemicalDrugName = value.化学药剂名称;
+                    }
+                  }
+                  if (key === '化学药剂名称' && typeof value === 'string' && value !== '因未明确情况，暂无法提供') {
+                    chemicalDrugName = value;
+                  }
+                  
+                  if (!excludedKeys.includes(key)) {
+                    if (typeof value === 'string') {
+                      markdown += `\n#### ${key}\n${value}\n`;
+                    } else if (typeof value === 'object' && value !== null) {
+                      markdown += `\n#### ${key}\n`;
+                      Object.entries(value).forEach(([subKey, subValue]) => {
+                        // 检查是否有药剂名称
+                        if (subKey === '化学药剂名称' && typeof subValue === 'string' && subValue !== '因未明确情况，暂无法提供') {
+                          chemicalDrugName = subValue;
+                        }
+                        
+                        if (typeof subValue === 'string') {
+                          markdown += `- **${subKey}**：${subValue}\n`;
+                        } else if (typeof subValue === 'object' && subValue !== null) {
+                          markdown += `- **${subKey}**：\n`;
+                          Object.entries(subValue).forEach(([subSubKey, subSubValue]) => {
+                            markdown += `  - ${subSubKey}: ${subSubValue}\n`;
+                          });
+                        }
+                      });
+                    }
+                  }
+                });
+              }
+          }else {
+              markdown += `- **${key}**：${mainResult[key]}\n`;
+            }
+          
+        }
+      }
+
+      // 注释掉这段代码，防止重复渲染 solution
+      /*
+      // 处理解决方案
+      if (mainResult.solution && Array.isArray(mainResult.solution) && mainResult.solution.length > 0) {
+        console.log('准备处理 solution 数据:', mainResult.solution);
+        const solution = mainResult.solution[0];
+        markdown += `\n### 解决方案\n`;
+
+        if (solution.栽培管理方案) {
+          markdown += `\n#### 栽培管理方案\n`;
+
+          if (solution.栽培管理方案.环境调控) {
+            markdown += `\n##### 环境调控建议\n`;
+            Object.entries(solution.栽培管理方案.环境调控).forEach(([key, value]) => {
+              markdown += `- **${key}**：${value}\n`;
+            });
+          }
+
+          if (solution.栽培管理方案.营养管理) {
+            markdown += `\n##### 营养管理\n${solution.栽培管理方案.营养管理}\n`;
+          }
+        }
+
+        // 添加处理其他可能的 solution 字段
+        const excludedKeys = ['栽培管理方案']; // 已经处理过的字段
+
+        // 处理其他顶级字段
+        Object.entries(solution).forEach(([key, value]) => {
+          console.log(`处理 solution 中的字段: ${key}`, value);
+          if (!excludedKeys.includes(key)) {
+            if (typeof value === 'string') {
+              markdown += `\n#### ${key}\n${value}\n`;
+            } else if (typeof value === 'object' && value !== null) {
+              markdown += `\n#### ${key}\n`;
+              Object.entries(value).forEach(([subKey, subValue]) => {
+                if (typeof subValue === 'string') {
+                  markdown += `- **${subKey}**：${subValue}\n`;
+                } else if (typeof subValue === 'object' && subValue !== null) {
+                  markdown += `- **${subKey}**：\n`;
+                  Object.entries(subValue).forEach(([subSubKey, subSubValue]) => {
+                    markdown += `  - ${subSubKey}: ${subSubValue}\n`;
+                  });
+                }
+              });
+            }
+          }
+        });
+      } else {
+        console.log('未找到 solution 数据或格式不符合预期');
+      }
+      */
+      
+    } else {
+      // 处理常规格式
+      markdown += `\n### 植物信息\n`;
+      if (plantResult.plant植物) {
+        markdown += `- **植物**：${plantResult.plant植物}\n`;
+      }
+      if (plantResult.植物当前的生育期) {
+        markdown += `- **生育期**：${plantResult.植物当前的生育期}\n`;
+      }
+    }
+  }
+
+  // 处理气象和位置信息
+  if (result.result.location || result.result.formatted_address || result.result.weatherResult) {
+    markdown += `\n### 位置和气象信息\n`;
+
+    if (result.result.formatted_address) {
+      markdown += `- **位置**：${result.result.formatted_address}\n`;
+    }
+
+    if (result.result.weatherResult) {
+      markdown += `\n#### 气象数据\n`;
+      Object.entries(result.result.weatherResult).forEach(([key, value]) => {
+        markdown += `- **${key}**：${value}\n`;
+      });
+    }
+  }
+
+  // 处理图像分析结果
+  if (result.result.image_analysis_result) {
+    markdown += `\n### 图像分析技术信息\n`;
+
+    if (result.result.image_analysis_result.Outputmessages &&
+      Array.isArray(result.result.image_analysis_result.Outputmessages)) {
+      result.result.image_analysis_result.Outputmessages.forEach((item: any, index: number) => {
+        markdown += `#### 分析项 ${index + 1}\n`;
+        Object.entries(item).forEach(([key, value]) => {
+          if (key !== 'location') {
+            markdown += `- **${key}**：${value}\n`;
+          }
+        });
+      });
+    } else {
+      markdown += `- 图像处理完成\n`;
+    }
+  }
+  
+  
+  // 如果存在药剂名称，添加购买按钮
+  if (chemicalDrugName  && chemicalDrugName !== '因未明确情况，暂无法提供') {
+    const encodedDrugName = encodeURIComponent(chemicalDrugName);
+    const jdSearchUrl = `https://search.jd.com/Search?keyword=${encodedDrugName}`;
+    
+    markdown += `
+<div style="text-align: center; margin-top: 30px; margin-bottom: 20px;">
+  <a href="${jdSearchUrl}" target="_blank" style="display: inline-block; background-color: #e2231a; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+    专属药剂【${chemicalDrugName}】购买请点击
+  </a>
+</div>
+`;
+  }
+
+  return h(Typography, null, {
+    default: () => h('div', {
+      innerHTML: md.render(markdown),
+      style: {
+        padding: '20px',
+        'max-width': '800px',
+        margin: '0 auto'
+      }
+    })
+  });
+};
+</script>
+
+<style scoped>
+:deep(img) {
+  max-width: 100%;
+  height: auto;
+  margin: 10px 0;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+:deep(h2) {
+  color: #1890ff;
+  margin-bottom: 20px;
+}
+
+:deep(h3) {
+  color: #333;
+  margin: 16px 0;
+}
+
+:deep(h4) {
+  color: #666;
+  margin: 12px 0;
+}
+</style>
