@@ -1,9 +1,5 @@
 <!--
- * @Author: 吴伟 15711376175@163.com
- * @Date: 2025-03-06 09:52:29
- * @LastEditors: 吴伟 15711376175@163.com
- * @LastEditTime: 2025-03-28 15:30:02
- * @FilePath: /ai/src/views/newImageTalk.vue
+ 
  * @Description: 专门用于处理包含 Outputmessages 的图像分析结果
 -->
 <template>
