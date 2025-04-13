@@ -1,8 +1,6 @@
-# ai
+# Plant-Hospital Agent
 
-农业ai
-
-This template should help get you started developing with Vue 3 in Vite.
+使用开发完成的农业（植物）多模态医疗智能体MAgri-Agent，构建了一个完整的线上AI植物医院Plant-Hospital Agent，包含4个独立功能的子agent。多个agent配合自动化完成植物病害诊治与健康管理。植物生病在线诊治并给出解决方案。
 
 ## Recommended IDE Setup
 
